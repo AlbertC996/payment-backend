@@ -5,7 +5,7 @@ import { ChangeNowService } from './changenow/changenow.service';
 export class AppService {
   constructor(private readonly changeNowService: ChangeNowService) {}
 
-  async getCurrenciesList() {
+  async getCurrenciesList(): Promise<any> {
     return this.changeNowService.getCurrencies();
   }
 }
