@@ -41,7 +41,15 @@ export class TransactionsController {
   async handleWebhook(@Body() payload: WebhookPayload): Promise<any> {
     try {
       this.logger.log('📥 Received webhook from ChangeNOW');
-      return await this.transactionsService.updateTransactionStatus(payload);
+      if (!payload.id || !payload.status) {
+        throw new HttpException(
+          { error: 'Missing required fields: id and status' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      return await this.transactionsService.updateTransactionStatus(
+        payload as { [key: string]: any; id: string; status: string },
+      );
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : 'Unknown error occurred';
