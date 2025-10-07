@@ -19,7 +19,11 @@ export class TransactionsService {
     return this.transactionModel.findById(id).exec();
   }
 
-  async updateTransactionStatus(payload: any) {
+  async updateTransactionStatus(payload: {
+    id: string;
+    status: string;
+    [key: string]: any;
+  }) {
     const { id, status } = payload;
 
     this.logger.log(`Updating transaction ${id} status to ${status}`);
@@ -37,7 +41,17 @@ export class TransactionsService {
 
     transaction.status = status;
     transaction.state = status;
-    transaction.metadata = { ...transaction.metadata, ...payload };
+    // Only merge allowed metadata keys from payload to avoid unsafe 'any' assignment
+    const allowedMetadataKeys = Object.keys(transaction.metadata ?? {});
+    const newMetadata: Record<string, unknown> = {
+      ...((transaction.metadata as Record<string, unknown>) ?? {}),
+    };
+    for (const key of allowedMetadataKeys) {
+      if (key in payload) {
+        newMetadata[key] = payload[key];
+      }
+    }
+    transaction.metadata = newMetadata;
 
     await transaction.save();
 
