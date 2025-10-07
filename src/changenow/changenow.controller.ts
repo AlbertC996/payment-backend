@@ -11,30 +11,78 @@ export class ChangeNowController {
   async getCurrencies() {
     try {
       return await this.changeNowService.getCurrencies();
-    } catch (err: any) {
-      this.logger.error(
-        'getCurrencies error',
-        err.response?.data || err.message,
-      );
-      return { error: 'Failed to fetch currencies' };
+    } catch (err: unknown) {
+      let errorMsg = 'Unknown error';
+      if (typeof err === 'object' && err !== null) {
+        if (
+          'response' in err &&
+          typeof (err as { response?: unknown }).response === 'object' &&
+          (err as { response?: unknown }).response !== null &&
+          'data' in (err as { response: { data?: unknown } }).response
+        ) {
+          const responseObj = (err as { response: { data?: unknown } })
+            .response;
+          errorMsg =
+            typeof responseObj.data === 'string'
+              ? responseObj.data
+              : JSON.stringify(responseObj.data);
+        } else if (
+          'message' in err &&
+          typeof (err as { message?: unknown }).message === 'string'
+        ) {
+          errorMsg = (err as { message: string }).message;
+        }
+      } else if (typeof err === 'string') {
+        errorMsg = err;
+      }
+      this.logger.error('getCurrencies error', errorMsg);
+      return { error: 'Failed to fetch currencies', details: errorMsg };
     }
   }
 
   @Post('set-webhook')
   async setWebhook(@Body() payload: { url: string }) {
     try {
-      return await this.changeNowService.setWebhook(payload.url);
-    } catch (err: any) {
-      this.logger.error('setWebhook error', err.response?.data || err.message);
+      const result: unknown = await this.changeNowService.setWebhook(
+        payload.url,
+      );
+      return result;
+    } catch (err: unknown) {
+      let errorMsg = 'Unknown error';
+      if (typeof err === 'object' && err !== null) {
+        if (
+          'response' in err &&
+          typeof (err as { response?: unknown }).response === 'object' &&
+          (err as { response?: unknown }).response !== null &&
+          'data' in (err as { response: { data?: unknown } }).response
+        ) {
+          const responseObj = (err as { response: { data?: unknown } })
+            .response;
+          errorMsg =
+            typeof responseObj.data === 'string'
+              ? responseObj.data
+              : JSON.stringify(responseObj.data);
+        } else if (
+          'message' in err &&
+          typeof (err as { message?: unknown }).message === 'string'
+        ) {
+          errorMsg = (err as { message: string }).message;
+        }
+      } else if (typeof err === 'string') {
+        errorMsg = err;
+      }
+      this.logger.error('setWebhook error', errorMsg);
       return {
         error: 'Failed to set webhook',
-        details: err.response?.data || err.message,
+        details: errorMsg,
       };
     }
   }
 
   @Post('create-order')
-  async createOrder(@Body() payload: any) {
+  async createOrder(
+    @Body() payload: import('./changenow.service').CreateOrderPayload,
+  ) {
     try {
       const result = await this.changeNowService.createOrder(payload);
       console.log('🟢 Payload from frontend:', payload);
@@ -49,12 +97,35 @@ export class ChangeNowController {
       }
 
       return result;
-    } catch (err: any) {
-      this.logger.error('createOrder error', err.response?.data || err.message);
+    } catch (err: unknown) {
+      let errorMsg = 'Unknown error';
+      if (typeof err === 'object' && err !== null) {
+        if (
+          'response' in err &&
+          typeof (err as { response?: unknown }).response === 'object' &&
+          (err as { response?: unknown }).response !== null &&
+          'data' in (err as { response: { data?: unknown } }).response
+        ) {
+          const responseObj = (err as { response: { data?: unknown } })
+            .response;
+          errorMsg =
+            typeof responseObj.data === 'string'
+              ? responseObj.data
+              : JSON.stringify(responseObj.data);
+        } else if (
+          'message' in err &&
+          typeof (err as { message?: unknown }).message === 'string'
+        ) {
+          errorMsg = (err as { message: string }).message;
+        }
+      } else if (typeof err === 'string') {
+        errorMsg = err;
+      }
+      this.logger.error('createOrder error', errorMsg);
       return {
         success: false,
         error: 'Failed to create order',
-        details: err.response?.data || err.message,
+        details: errorMsg,
       };
     }
   }
