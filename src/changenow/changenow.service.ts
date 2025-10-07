@@ -35,14 +35,15 @@ export class ChangeNowService {
   ) {}
 
   /** 📦 Fetch currencies from ChangeNOW */
-  async getCurrencies(): Promise<any> {
+  async getCurrencies(): Promise<Array<Record<string, unknown>>> {
     try {
       const url = 'https://api.changenow.io/v2/exchange/currencies';
-      const res: AxiosResponse = await axios.get(url, {
-        headers: { 'x-changenow-api-key': this.apiKey },
-        timeout: 30000,
-      });
-      return res.data;
+      const res: AxiosResponse<Array<Record<string, unknown>>> =
+        await axios.get(url, {
+          headers: { 'x-changenow-api-key': this.apiKey },
+          timeout: 30000,
+        });
+      return Array.isArray(res.data) ? res.data : [];
     } catch (error: unknown) {
       let errorMessage = 'Unknown error';
       let errorData: string | undefined;
