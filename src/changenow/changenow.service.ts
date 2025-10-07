@@ -34,7 +34,7 @@ export class ChangeNowService {
     private transactionModel: Model<TransactionDocument>,
   ) {}
 
-  /** 📦     ChangeNOW */
+  /** 📦 Fetch currencies from ChangeNOW */
   async getCurrencies(): Promise<any> {
     try {
       const url = 'https://api.changenow.io/v2/exchange/currencies';
@@ -67,11 +67,11 @@ export class ChangeNowService {
     }
   }
 
-  /** 💳      (Fiat → Crypto) */
+  /** 💳 Create fiat → crypto order */
   async createOrder(payload: CreateOrderPayload): Promise<CreateOrderResult> {
     const endpoint = 'https://api.changenow.io/v2/exchange/by-card';
 
-    // Type-safe helper to get value from multiple possible keys
+    // Type-safe helper
     function getField<T>(
       obj: Record<string, unknown>,
       keys: string[],
@@ -85,14 +85,14 @@ export class ChangeNowService {
     }
 
     const fromCurrency = String(
-      getField<string | number>(
+      getField(
         payload as Record<string, unknown>,
         ['fromCurrency', 'from_currency', 'currencyFrom', 'from'],
         '',
       ),
     );
     const toCurrency = String(
-      getField<string | number>(
+      getField(
         payload as Record<string, unknown>,
         ['toCurrency', 'to_currency', 'currencyTo', 'to'],
         '',
@@ -106,39 +106,32 @@ export class ChangeNowService {
       typeof fromAmountRaw === 'undefined' ? '0' : String(fromAmountRaw);
 
     const address = String(
-      getField<string | number>(
+      getField(
         payload as Record<string, unknown>,
         ['address'],
         process.env.WALLET_ADDRESS ?? '',
       ),
     );
     const country = String(
-      getField<string | number>(
-        payload as Record<string, unknown>,
-        ['country'],
-        'US',
-      ),
+      getField(payload as Record<string, unknown>, ['country'], 'US'),
     );
     const paymentMethod = String(
-      getField<string | number>(
+      getField(
         payload as Record<string, unknown>,
         ['paymentMethod', 'payment_method'],
         'card',
       ),
     );
     const email = String(
-      getField<string | number>(
-        payload as Record<string, unknown>,
-        ['email'],
-        '',
-      ),
+      getField(payload as Record<string, unknown>, ['email'], ''),
     );
     const externalUserId = String(
-      getField<string | number>(
+      getField(
         payload as Record<string, unknown>,
         ['externalUserId', 'external_user_id'],
         email || `user-${Date.now()}`,
-      ) ?? (email || `user-${Date.now()}`),
+      ) ??
+        (email || `user-${Date.now()}`),
     );
 
     const body = {
@@ -160,25 +153,26 @@ export class ChangeNowService {
         timeout: 60000,
       });
 
-      // Type guard for response data
       const respData =
         typeof res.data === 'object' && res.data !== null
           ? (res.data as Record<string, unknown>)
           : {};
 
-  const orderId = typeof respData.id === 'string' ? respData.id : `cn_${Date.now()}`;
+      const orderId =
+        typeof respData.id === 'string' ? respData.id : `cn_${Date.now()}`;
+      const externalOrderId =
+        typeof respData.id === 'string' ? respData.id : null;
+      const state =
+        typeof respData.status === 'string' ? respData.status : 'created';
+      const status =
+        typeof respData.status === 'string' ? respData.status : 'pending';
 
-  const externalOrderId = typeof respData.id === 'string' ? respData.id : null;
-
-  const state = typeof respData.status === 'string' ? respData.status : 'created';
-
-  const status = typeof respData.status === 'string' ? respData.status : 'pending';
-  let payUrl: string | undefined;
-  if (typeof respData.payUrl === 'string') payUrl = respData.payUrl;
-
-  else if (typeof respData.redirectUrl === 'string') payUrl = respData.redirectUrl;
-
-  else if (typeof respData.checkoutUrl === 'string') payUrl = respData.checkoutUrl;
+      let payUrl: string | undefined;
+      if (typeof respData.payUrl === 'string') payUrl = respData.payUrl;
+      else if (typeof respData.redirectUrl === 'string')
+        payUrl = respData.redirectUrl;
+      else if (typeof respData.checkoutUrl === 'string')
+        payUrl = respData.checkoutUrl;
 
       const tx = new this.transactionModel({
         orderId,
@@ -198,20 +192,24 @@ export class ChangeNowService {
 
       await tx.save();
 
+      const savedTransactionId: string =
+        typeof tx._id === 'object' && tx._id !== null && 'toString' in tx._id
+          ? (tx._id as { toString: () => string }).toString()
+          : typeof tx._id === 'string'
+            ? tx._id
+            : '';
+
       return {
         respData,
-        savedTransactionId:
-          tx._id && typeof tx._id.toString === 'function'
-            ? tx._id.toString()
-            : '',
+        savedTransactionId,
         payUrl,
       };
     } catch (error: unknown) {
       let errorMessage = 'Unknown error';
       let errorType = 'unknown';
       let errorData: string | undefined;
+
       if (typeof error === 'object' && error !== null) {
-        // Type guard for error.response
         const errObj = error as { [key: string]: unknown };
         const response = errObj.response;
         if (typeof response === 'object' && response !== null) {
@@ -219,7 +217,15 @@ export class ChangeNowService {
           if (typeof responseObj.status === 'string') {
             errorType = responseObj.status;
           }
-            // Removed misplaced variable declarations from error block
+          if (responseObj.data) {
+            errorData = JSON.stringify(responseObj.data);
+          }
+        }
+        if (typeof errObj.message === 'string') {
+          errorMessage = errObj.message;
+        }
+      }
+
       this.logger.error(
         '❌ Failed to create order with ChangeNOW',
         errorData || errorMessage,
@@ -246,7 +252,7 @@ export class ChangeNowService {
     }
   }
 
-  /** 🔔  Webhook  ChangeNOW */
+  /** 🔔  Webhook setup for ChangeNOW */
   async setWebhook(url: string): Promise<any> {
     try {
       const response = await axios.post(
