@@ -12,7 +12,11 @@ async function bootstrap() {
   const port = process.env.PORT || 3001;
 
   app.enableCors({
-    origin: ['http://localhost:3000', process.env.NGROK_URL],
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      process.env.NGROK_URL,
+    ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
